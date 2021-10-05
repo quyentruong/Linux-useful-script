@@ -122,16 +122,7 @@ echo -e "$GREEN_BULLET 2nd Test WAN IP $GREEN_SEPARATOR $(print_servers "ip")"
 if [ ${dns_count} -eq "0" ];then
     echo -e "$GREEN_BULLET DNS server(s) $GREEN_SEPARATOR No DNS servers found" 
 else
-    temp=$(print_servers "dns")
-    echo -e "$GREEN_BULLET DNS server(s) $GREEN_SEPARATOR $temp[0]" 
-    if [ ${dns_count} -ne "1" ];then
-        unset temp[0]
-        for t in temp
-        do
-            echo -e "                  $t"
-        done
-    fi
-    print_servers "dns"
+    echo -e "$GREEN_BULLET DNS server(s) $GREEN_SEPARATOR $(print_servers "dns")" 
 fi
 
 
