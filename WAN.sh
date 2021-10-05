@@ -112,26 +112,20 @@ fi
 
 dns_count=$(print_servers "dns" | wc -l)
 
-echo_bold "Your IP:"
-print_servers "ip"
-
-echo ""
-if [ ${dns_count} -eq "0" ];then
-    echo_bold "No DNS servers found"
-else
-    if [ ${dns_count} -eq "1" ];then
-        echo_bold "You use ${dns_count} DNS server:"
-    else
-        echo_bold "You use ${dns_count} DNS servers:"
-    fi
-    print_servers "dns"
-fi
-
 echo -e "$GREEN_LINE"
 echo -e " $(grep '^PRETTY' /etc/os-release | cut -d "=" -f2 | cut -d '"' -f2) $GREEN_SEPARATOR $(date "+%H:%M - %a %m/%d/%Y")"
 echo -e "$GREEN_LINE"
 
-echo -e "$GREEN_BULLET WAN IP $GREEN_SEPARATOR $(curl -sSfLm 3 https://freegeoip.app/csv/ 2>&1 | mawk -F, '($5){r=$5" "}{print $1" "r$3}')"
+echo -e "$GREEN_BULLET 1st Test WAN IP $GREEN_SEPARATOR $(curl -sSfLm 3 https://freegeoip.app/csv/ 2>&1 | mawk -F, '($5){r=$5" "}{print $1" "r$3}')"
+echo -e "$GREEN_BULLET 2nd Test WAN IP $GREEN_SEPARATOR $(print_servers "ip")"
+
+if [ ${dns_count} -eq "0" ];then
+    echo -e "$GREEN_BULLET DNS server(s) $GREEN_SEPARATOR No DNS servers found" 
+else
+    echo -e "$GREEN_BULLET DNS server(s) $GREEN_SEPARATOR $(print_servers "dns")" 
+fi
+
+
 echo -e "$GREEN_BULLET Weather $GREEN_SEPARATOR $(curl -sSfLm 3 https://wttr.in/?format=4 2>&1)"
 
 echo -e "$GREEN_BULLET Conclusion $GREEN_SEPARATOR $(print_servers "conclusion")"
