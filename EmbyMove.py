@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import os
 import re
-import sys
+import pathlib
 
 EmbyLibrary = './EmbyLibrary'
 ConvertDir = './convert'
@@ -16,8 +16,27 @@ CATEGORY = {
         '2': 'Animation Series',
     }
 }
+CATEGORY_INPUT = 0
+TEST_MODE = True
 listOfWords = '66CH|2160p|HDR|imax|10bit|BluRay|6CH|x265|HEVC-PSA|1080p|WEBRip|8CH|2CH|720p|web-dl|remastered|REAL|REPACK|BrRip'
 listOfWords = listOfWords.split('|')
+
+
+def is_linux():
+    """
+    is_linux()
+    Returns True if running on Linux, False otherwise
+    """
+    return os.name == 'posix'
+
+
+def set_folder_user_group(folder, user, group):
+    """
+    set_folder_user_group(folder, user, group)
+    Sets the group of the folder
+    """
+    if is_linux():
+        os.system(f'chown -R {user}:{group} {folder}')
 
 
 def get_dirs(path):
@@ -43,6 +62,19 @@ def combine_path_from_category(category):
     return path
 
 
+def get_media_files_in_dir(path):
+    """
+    get_media_files_in_dir(path)
+    Returns a list of all media files in the path
+    """
+    media_files = []
+    for i in os.listdir(path):
+        if os.path.isfile(os.path.join(path, i)):
+            if i.endswith('.mkv') or i.endswith('.mp4') or i.endswith('.txt'):
+                media_files.append(i)
+    return media_files
+
+
 def remove_word_from_list(list):
     """
     remove_word_from_list(list, words)
@@ -55,10 +87,6 @@ def remove_word_from_list(list):
                 if ord(list[i][-1]) != ord('#'):
                     temp.append(list[i])
     return temp
-
-
-SeriesDirs = remove_word_from_list(combine_path_from_category('Movie'))
-# print('Movies: ' + '\n'.join(SeriesDirs))
 
 
 def find_season(file):
@@ -118,9 +146,10 @@ def remove_dot(file):
     remove_dot(file)
     Removes the dot from the file name
     """
-    file = re.sub('\.', ' ', file)
+    temp = os.path.splitext(file)
+    file = re.sub('\.', ' ', temp[0])
     file = file.strip()
-    return file
+    return file + temp[1]
 
 
 def find_movie_name(file):
@@ -152,22 +181,34 @@ def find_year(file):
     return '-1'
 
 
-test_movie = "DC's.Legends.of.Tomorrow.S07E04.Speakeasy.Does.It.1080p.WEBRip.6CH.x265.HEVC-PSA"
-test_movie2 = 'ZThe.Hitmans.Wifes.Bodyguard.2021.EXTENDED.720p.WEBRip.2CH.x265.HEVC-PSA'
-
-
-def movie_path_in_list(file) -> str:
+def movie_path_in_list(file, combine_path) -> str:
     """
     movie_path_in_list(file)
     Returns path if movie in th list, '' otherwise
     """
+    global CATEGORY_INPUT
     file = remove_words(file, listOfWords)
     file = remove_dot(file)
 
-    for i in range(len(SeriesDirs)):
-        if find_movie_name(file) in SeriesDirs[i]:
-            return SeriesDirs[i]
+    if find_season(file) != '-1':
+        category_str = 'Series'
+    else:
+        category_str = 'Movie'
+
+    for i in range(len(combine_path)):
+        if find_movie_name(file) in combine_path[i]:
+            value = os.path.normpath(combine_path[i]).split(os.path.sep)[1]
+            CATEGORY_INPUT = get_key(value, CATEGORY[category_str])
+            return combine_path[i]
     return ''
+
+
+# get key from value
+def get_key(value, dict):
+    for key, val in dict.items():
+        if val == value:
+            return key
+    return '-1'
 
 
 def create_folder_movie(file):
@@ -175,51 +216,107 @@ def create_folder_movie(file):
     create_folder_movie(file)
     Creates a folder for the movie
     """
+    global CATEGORY_INPUT
     file = remove_words(file, listOfWords)
     file = remove_dot(file)
 
     temp = 'Create folder for {' + file + '}?\n'
+    category_str = ''
     if find_season(file) != '-1':
+        category_str = 'Series'
         for key, value in CATEGORY['Series'].items():
             temp += f"{key}. {value}\n"
     else:
+        category_str = 'Movie'
         for key, value in CATEGORY['Movie'].items():
             temp += f"{key}. {value}\n"
 
-    category = input(temp)
-    for key in CATEGORY.keys():
-        create_folder_helper(key, category, file)
+    CATEGORY_INPUT = input(temp)
+    create_folder_helper(category_str, file)
 
 
-def create_folder_helper(category_str, category, file):
+def create_folder_helper(category_str, file):
     """
     create_folder_helper(category_str, category, file)
     Function helper for create_folder_movie
     """
     alphabet_path = os.path.join(
-        EmbyLibrary, CATEGORY[category_str][category], file[0])
+        EmbyLibrary, CATEGORY[category_str][CATEGORY_INPUT], file[0])
     if not os.path.exists(alphabet_path):
-        os.makedirs(alphabet_path)
+        if TEST_MODE:
+            print(f'Create folder {alphabet_path}')
+        else:
+            os.makedirs(alphabet_path)
+
     name_path = os.path.join(alphabet_path, find_movie_name(file))
     if not os.path.exists(name_path):
-        os.makedirs(name_path)
+        if TEST_MODE:
+            print(f'Create folder {name_path}')
+        else:
+            os.makedirs(name_path)
+
     if find_season(file) != '-1':
         season_path = os.path.join(
-            name_path, 'Season ' + int(find_season(file)))
+            name_path, 'Season ' + str(int(find_season(file))))
         if not os.path.exists(season_path):
-            os.makedirs(season_path)
+            if TEST_MODE:
+                print(f'Create folder {season_path}')
+            else:
+                os.makedirs(season_path)
 
 
-test_movie2 = remove_words(test_movie2, listOfWords)
-test_movie2 = remove_dot(test_movie2)
+def move_file_into_folder(file):
+    """
+    move_file_into_folder(file)
+    Moves the file into the folder
+    """
+    if find_season(file) != '-1':
+        category_str = 'Series'
+    else:
+        category_str = 'Movie'
+
+    file = remove_words(file, listOfWords)
+    file = remove_dot(file)
+
+    alphabet_path = os.path.join(
+        EmbyLibrary, CATEGORY[category_str][CATEGORY_INPUT], file[0])
+    name_path = os.path.join(alphabet_path, find_movie_name(file))
+    if find_season(file) != '-1':
+        season_path = os.path.join(
+            name_path, 'Season ' + str(int(find_season(file))))
+        # move file to season folder if file not in season folder
+        if not os.path.exists(os.path.join(season_path, file)):
+            if TEST_MODE:
+                print(f'{file} moved to {season_path}')
+            else:
+                os.rename(file, os.path.join(season_path, file))
+    else:
+        # move file to movie folder if file not in movie folder
+        if not os.path.exists(os.path.join(name_path, file)):
+            if TEST_MODE:
+                print(f'{file} moved to {name_path}')
+            else:
+                os.rename(file, os.path.join(name_path, file))
 
 
-# print(find_movie_name(test_movie2))
-# print(find_title(test_movie2))
+def main():
+    media_files = get_media_files_in_dir(ConvertDir)
+    set_folder_user_group(ConvertDir, 'emby', 'dietpi')
+    for file in media_files:
+        if find_season(file) != '-1':
+            isMovieExist = movie_path_in_list(
+                file, combine_path_from_category('Series'))
+            if isMovieExist == '':
+                create_folder_movie(file)
+        else:
+            isMovieExist = movie_path_in_list(
+                file, combine_path_from_category('Movie'))
+            if isMovieExist == '':
+                create_folder_movie(file)
 
-# print(f'{find_movie_name(test_movie2)} S{find_season(test_movie2)}E{find_episode(test_movie2)} {find_title(test_movie2)}')
-# create_folder_movie(test_movie2)
-# print(test_movie)
-# print(int (find_season(test_movie)))
-# print(SeriesDirs)
-# print(find_movie_name_in_season(test_movie) in SeriesDirs)
+        move_file_into_folder(file)
+
+
+if __name__ == "__main__":
+    main()
+    print('Done')
