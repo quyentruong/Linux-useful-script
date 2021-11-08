@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 import os
 import re
-import pathlib
 
 EmbyLibrary = './EmbyLibrary'
 ConvertDir = './convert'
@@ -181,7 +180,7 @@ def find_year(file):
     return '-1'
 
 
-def movie_path_in_list(file, combine_path) -> str:
+def movie_path_in_list(file) -> str:
     """
     movie_path_in_list(file)
     Returns path if movie in th list, '' otherwise
@@ -194,12 +193,16 @@ def movie_path_in_list(file, combine_path) -> str:
         category_str = 'Series'
     else:
         category_str = 'Movie'
-
+    combine_path = remove_word_from_list(
+        combine_path_from_category(category_str))
     for i in range(len(combine_path)):
         if find_movie_name(file) in combine_path[i]:
             value = os.path.normpath(combine_path[i]).split(os.path.sep)[1]
             CATEGORY_INPUT = get_key(value, CATEGORY[category_str])
+            move_file_into_folder(file, category_str)
             return combine_path[i]
+    create_folder_movie(file, category_str)
+    move_file_into_folder(file, category_str)
     return ''
 
 
@@ -211,7 +214,7 @@ def get_key(value, dict):
     return '-1'
 
 
-def create_folder_movie(file):
+def create_folder_movie(file, category_str):
     """
     create_folder_movie(file)
     Creates a folder for the movie
@@ -221,21 +224,15 @@ def create_folder_movie(file):
     file = remove_dot(file)
 
     temp = 'Create folder for {' + file + '}?\n'
-    category_str = ''
-    if find_season(file) != '-1':
-        category_str = 'Series'
-        for key, value in CATEGORY['Series'].items():
-            temp += f"{key}. {value}\n"
-    else:
-        category_str = 'Movie'
-        for key, value in CATEGORY['Movie'].items():
-            temp += f"{key}. {value}\n"
+
+    for key, value in CATEGORY[category_str].items():
+        temp += f"{key}. {value}\n"
 
     CATEGORY_INPUT = input(temp)
-    create_folder_helper(category_str, file)
+    create_folder_helper(file, category_str)
 
 
-def create_folder_helper(category_str, file):
+def create_folder_helper(file, category_str):
     """
     create_folder_helper(category_str, category, file)
     Function helper for create_folder_movie
@@ -265,15 +262,11 @@ def create_folder_helper(category_str, file):
                 os.makedirs(season_path)
 
 
-def move_file_into_folder(file):
+def move_file_into_folder(file, category_str):
     """
     move_file_into_folder(file)
     Moves the file into the folder
     """
-    if find_season(file) != '-1':
-        category_str = 'Series'
-    else:
-        category_str = 'Movie'
 
     file = remove_words(file, listOfWords)
     file = remove_dot(file)
@@ -303,18 +296,7 @@ def main():
     media_files = get_media_files_in_dir(ConvertDir)
     set_folder_user_group(ConvertDir, 'emby', 'dietpi')
     for file in media_files:
-        if find_season(file) != '-1':
-            isMovieExist = movie_path_in_list(
-                file, combine_path_from_category('Series'))
-            if isMovieExist == '':
-                create_folder_movie(file)
-        else:
-            isMovieExist = movie_path_in_list(
-                file, combine_path_from_category('Movie'))
-            if isMovieExist == '':
-                create_folder_movie(file)
-
-        move_file_into_folder(file)
+        movie_path_in_list(file)
 
 
 if __name__ == "__main__":
