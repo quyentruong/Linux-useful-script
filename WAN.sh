@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 
-clear
-
 RED='\033[0;31m'
 BOLD='\033[1m'
 NC='\033[0m'
