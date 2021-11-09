@@ -18,7 +18,7 @@ CATEGORY = {
 
 
 CATEGORY_INPUT = 0
-TEST_MODE = True
+TEST_MODE = False
 listOfWords = '66CH|2160p|HDR|imax|10bit|BluRay|6CH|x265|HEVC-PSA|1080p|WEBRip|8CH|2CH|720p|web-dl|remastered|REAL|REPACK|BrRip'
 listOfWords = listOfWords.split('|')
 
@@ -221,6 +221,7 @@ def movie_path_in_list(file) -> str:
     Returns path if movie in th list, '' otherwise
     """
     global CATEGORY_INPUT
+    origin_file = os.path.join(ConvertDir, file)
     file = remove_words(file, listOfWords)
     file = remove_dot(file)
 
@@ -234,10 +235,10 @@ def movie_path_in_list(file) -> str:
         if find_movie_name(file) in combine_path[i]:
             value = os.path.normpath(combine_path[i]).split(os.path.sep)[1]
             CATEGORY_INPUT = get_key(value, CATEGORY[category_str])
-            move_file_into_folder(file, category_str)
+            move_file_into_folder(origin_file, file, category_str)
             return combine_path[i]
     create_folder_movie(file, category_str)
-    move_file_into_folder(file, category_str)
+    move_file_into_folder(origin_file, file, category_str)
     return ''
 
 
@@ -275,36 +276,30 @@ def create_folder_helper(file, category_str):
     alphabet_path = os.path.join(
         EmbyLibrary, CATEGORY[category_str][CATEGORY_INPUT], file[0])
     if not os.path.exists(alphabet_path):
-        if TEST_MODE:
-            print(f'+ Create folder {alphabet_path}')
-        else:
+        print(f'+ Create folder {alphabet_path}')
+        if not TEST_MODE:
             os.makedirs(alphabet_path)
 
     name_path = os.path.join(alphabet_path, find_movie_name_with_year(file))
     if not os.path.exists(name_path):
-        if TEST_MODE:
-            print(f'+ Create folder {name_path}')
-        else:
+        print(f'+ Create folder {name_path}')
+        if not TEST_MODE:
             os.makedirs(name_path)
 
     if find_season(file) != '-1':
         season_path = os.path.join(
             name_path, 'Season ' + str(int(find_season(file))))
         if not os.path.exists(season_path):
-            if TEST_MODE:
-                print(f'+ Create folder {season_path}')
-            else:
+            print(f'+ Create folder {season_path}')
+            if not TEST_MODE:
                 os.makedirs(season_path)
 
 
-def move_file_into_folder(file, category_str):
+def move_file_into_folder(origin_file, file, category_str):
     """
     move_file_into_folder(file)
     Moves the file into the folder
     """
-
-    file = remove_words(file, listOfWords)
-    file = remove_dot(file)
 
     alphabet_path = os.path.join(
         EmbyLibrary, CATEGORY[category_str][CATEGORY_INPUT], file[0])
@@ -322,19 +317,17 @@ def move_file_into_folder(file, category_str):
 
             new_name = os.path.join(
                 season_path, f'{find_movie_name_with_year(file)} S{find_season(file)}E{find_episode(file)}{title}.{find_file_type(file)}')
-            if TEST_MODE:
-                print(f'- MOVE {file} to {new_name}')
-            else:
-                os.rename(file, new_name)
+            print(f'- MOVE {origin_file} to {new_name}')
+            if not TEST_MODE:
+                os.rename(origin_file, new_name)
     else:
         # move file to movie folder if file not in movie folder
         if not os.path.exists(os.path.join(name_path, file)):
             new_name = os.path.join(
                 name_path, f'{find_movie_name_with_year(file)}{title}.{find_file_type(file)}')
-            if TEST_MODE:
-                print(f'- MOVE {file} to {new_name}')
-            else:
-                os.rename(file, new_name)
+            print(f'- MOVE {origin_file} to {new_name}')
+            if not TEST_MODE:
+                os.rename(origin_file, new_name)
 
 
 def main():
