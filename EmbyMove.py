@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 import os
 import re
+import sys
+from colorama import Fore, Back, Style
 
 EmbyLibrary = './EmbyLibrary'
 ConvertDir = './convert'
@@ -18,7 +20,8 @@ CATEGORY = {
 
 
 CATEGORY_INPUT = 0
-TEST_MODE = False
+TEST_MODE = True
+# https://psarips.top/
 listOfWords = '66CH|2160p|HDR|imax|10bit|BluRay|6CH|x265|HEVC-PSA|1080p|WEBRip|8CH|2CH|720p|web-dl|remastered|REAL|REPACK|BrRip'
 listOfWords = listOfWords.split('|')
 
@@ -31,6 +34,14 @@ def is_linux():
     return os.name == 'posix'
 
 
+if is_linux():
+    TEST_MODE = False
+else:
+    print(Fore.RED + 'This script is only for Linux')
+    print('Running in Test Mode')
+    print(Style.RESET_ALL)
+
+
 def set_folder_user_group(folder, user, group):
     """
     set_folder_user_group(folder, user, group)
@@ -38,9 +49,6 @@ def set_folder_user_group(folder, user, group):
     """
     if is_linux():
         os.system(f'chown -R {user}:{group} {folder}')
-
-
-# multiple threads get the folders
 
 
 def get_dirs(path):
@@ -235,10 +243,11 @@ def movie_path_in_list(file) -> str:
         if find_movie_name(file) in combine_path[i]:
             value = os.path.normpath(combine_path[i]).split(os.path.sep)[1]
             CATEGORY_INPUT = get_key(value, CATEGORY[category_str])
-            move_file_into_folder(origin_file, file, category_str)
+            move_file_into_folder(
+                origin_file, file, category_str, combine_path[i])
             return combine_path[i]
     create_folder_movie(file, category_str)
-    move_file_into_folder(origin_file, file, category_str)
+    move_file_into_folder(origin_file, file, category_str, '')
     return ''
 
 
@@ -259,7 +268,7 @@ def create_folder_movie(file, category_str):
     file = remove_words(file, listOfWords)
     file = remove_dot(file)
 
-    temp = 'Create folder for {' + file + '}?\n'
+    temp = 'Create folder for ' + Fore.GREEN + file + Style.RESET_ALL + ' in ?🧐\n'
 
     for key, value in CATEGORY[category_str].items():
         temp += f"{key}. {value}\n"
@@ -276,13 +285,13 @@ def create_folder_helper(file, category_str):
     alphabet_path = os.path.join(
         EmbyLibrary, CATEGORY[category_str][CATEGORY_INPUT], file[0])
     if not os.path.exists(alphabet_path):
-        print(f'+ Create folder {alphabet_path}')
+        print_create_folder_with_color(alphabet_path)
         if not TEST_MODE:
             os.makedirs(alphabet_path)
 
     name_path = os.path.join(alphabet_path, find_movie_name_with_year(file))
     if not os.path.exists(name_path):
-        print(f'+ Create folder {name_path}')
+        print_create_folder_with_color(name_path)
         if not TEST_MODE:
             os.makedirs(name_path)
 
@@ -290,20 +299,40 @@ def create_folder_helper(file, category_str):
         season_path = os.path.join(
             name_path, 'Season ' + str(int(find_season(file))))
         if not os.path.exists(season_path):
-            print(f'+ Create folder {season_path}')
+            print_create_folder_with_color(season_path)
             if not TEST_MODE:
                 os.makedirs(season_path)
 
 
-def move_file_into_folder(origin_file, file, category_str):
+def print_create_folder_with_color(path):
+    """
+    print_create_folder_with_color(path)
+    Prints the folder to create with color
+    """
+    print(f'🏠 Create folder {Fore.GREEN}{path}{Style.RESET_ALL}')
+
+
+def print_move_file_with_color(origin_file, new_name):
+    """
+    print_move_file_with_color(origin_file, file, category_str, path)
+    Prints the file to move with color
+    """
+    print(
+        f'💔 Move file {Fore.GREEN}{origin_file}{Style.RESET_ALL} to {Fore.MAGENTA}{new_name}{Style.RESET_ALL}')
+
+
+def move_file_into_folder(origin_file, file, category_str, des_path):
     """
     move_file_into_folder(file)
     Moves the file into the folder
     """
+    if des_path == '':
+        des_path = os.path.join(
+            EmbyLibrary, CATEGORY[category_str][CATEGORY_INPUT], file[0], find_movie_name_with_year(file))
 
-    alphabet_path = os.path.join(
-        EmbyLibrary, CATEGORY[category_str][CATEGORY_INPUT], file[0])
-    name_path = os.path.join(alphabet_path, find_movie_name_with_year(file))
+    # alphabet_path = os.path.join(
+    #     EmbyLibrary, CATEGORY[category_str][CATEGORY_INPUT], file[0])
+    # name_path = os.path.join(alphabet_path, find_movie_name_with_year(file))
     title = find_title(file)
     if title != '':
         title = ' '+title
@@ -311,23 +340,26 @@ def move_file_into_folder(origin_file, file, category_str):
         title = ''
     if find_season(file) != '-1':
         season_path = os.path.join(
-            name_path, 'Season ' + str(int(find_season(file))))
+            des_path, 'Season ' + str(int(find_season(file))))
         # move file to season folder if file not in season folder
         if not os.path.exists(os.path.join(season_path, file)):
-
             new_name = os.path.join(
                 season_path, f'{find_movie_name_with_year(file)} S{find_season(file)}E{find_episode(file)}{title}.{find_file_type(file)}')
-            print(f'- MOVE {origin_file} to {new_name}')
+            print_move_file_with_color(origin_file, new_name)
             if not TEST_MODE:
                 os.rename(origin_file, new_name)
+        else:
+            print(f'- {origin_file} already in {season_path}')
     else:
         # move file to movie folder if file not in movie folder
-        if not os.path.exists(os.path.join(name_path, file)):
+        if not os.path.exists(os.path.join(des_path, file)):
             new_name = os.path.join(
-                name_path, f'{find_movie_name_with_year(file)}{title}.{find_file_type(file)}')
-            print(f'- MOVE {origin_file} to {new_name}')
+                des_path, f'{find_movie_name_with_year(file)}{title}.{find_file_type(file)}')
+            print_move_file_with_color(origin_file, new_name)
             if not TEST_MODE:
                 os.rename(origin_file, new_name)
+        else:
+            print(f'- {origin_file} already in {des_path}')
 
 
 def main():
@@ -338,5 +370,9 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        print('\n\nExiting')
+        sys.exit(0)
     print('Done')
