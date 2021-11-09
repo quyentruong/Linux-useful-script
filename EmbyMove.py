@@ -15,6 +15,8 @@ CATEGORY = {
         '2': 'Animation Series',
     }
 }
+
+
 CATEGORY_INPUT = 0
 TEST_MODE = True
 listOfWords = '66CH|2160p|HDR|imax|10bit|BluRay|6CH|x265|HEVC-PSA|1080p|WEBRip|8CH|2CH|720p|web-dl|remastered|REAL|REPACK|BrRip'
@@ -36,6 +38,9 @@ def set_folder_user_group(folder, user, group):
     """
     if is_linux():
         os.system(f'chown -R {user}:{group} {folder}')
+
+
+# multiple threads get the folders
 
 
 def get_dirs(path):
@@ -72,6 +77,17 @@ def get_media_files_in_dir(path):
             if i.endswith('.mkv') or i.endswith('.mp4') or i.endswith('.txt'):
                 media_files.append(i)
     return media_files
+
+
+def find_file_type(file):
+    """
+    find_file_type(file)
+    Returns the file type as a string
+    """
+    for i in range(len(file)):
+        if file[i] == '.':
+            return file[i+1:]
+    return ''
 
 
 def remove_word_from_list(list):
@@ -127,7 +143,12 @@ def find_title(file):
     find_title(file)
     Returns the title as a string
     """
-    return file[file.index(f'E{find_episode(file)}')+4:]
+
+    if find_episode(file) != '-1':
+        return file[file.index(f'E{find_episode(file)}')+4:file.index(".")]
+    elif find_year(file) != '-1':
+        return file[file.index(find_year(file))+5:file.index(".")]
+    return ''
 
 
 def remove_words(file, words):
@@ -161,7 +182,10 @@ def find_movie_name(file):
             if file[i+1].isdigit():
                 movie = file[:i]
                 movie = movie.strip()
-                return movie
+                if find_year(movie) != '-1':
+                    return movie[:movie.index(find_year(movie))-1]
+                else:
+                    return movie
     return file[:file.index(find_year(file))-1]
 
 
@@ -178,6 +202,17 @@ def find_year(file):
                         year = file[i:i+4]
                         return year
     return '-1'
+
+
+def find_movie_name_with_year(file):
+    """
+    find_movie_name_with_year(file)
+    Returns the movie name with year as a string
+    """
+    if find_year(file) != '-1':
+        return f'{find_movie_name(file)} ({find_year(file)})'
+    else:
+        return find_movie_name(file)
 
 
 def movie_path_in_list(file) -> str:
@@ -241,14 +276,14 @@ def create_folder_helper(file, category_str):
         EmbyLibrary, CATEGORY[category_str][CATEGORY_INPUT], file[0])
     if not os.path.exists(alphabet_path):
         if TEST_MODE:
-            print(f'Create folder {alphabet_path}')
+            print(f'+ Create folder {alphabet_path}')
         else:
             os.makedirs(alphabet_path)
 
-    name_path = os.path.join(alphabet_path, find_movie_name(file))
+    name_path = os.path.join(alphabet_path, find_movie_name_with_year(file))
     if not os.path.exists(name_path):
         if TEST_MODE:
-            print(f'Create folder {name_path}')
+            print(f'+ Create folder {name_path}')
         else:
             os.makedirs(name_path)
 
@@ -257,7 +292,7 @@ def create_folder_helper(file, category_str):
             name_path, 'Season ' + str(int(find_season(file))))
         if not os.path.exists(season_path):
             if TEST_MODE:
-                print(f'Create folder {season_path}')
+                print(f'+ Create folder {season_path}')
             else:
                 os.makedirs(season_path)
 
@@ -273,21 +308,31 @@ def move_file_into_folder(file, category_str):
 
     alphabet_path = os.path.join(
         EmbyLibrary, CATEGORY[category_str][CATEGORY_INPUT], file[0])
-    name_path = os.path.join(alphabet_path, find_movie_name(file))
+    name_path = os.path.join(alphabet_path, find_movie_name_with_year(file))
+    title = find_title(file)
+    if title != '':
+        title = ' '+title
+    else:
+        title = ''
     if find_season(file) != '-1':
         season_path = os.path.join(
             name_path, 'Season ' + str(int(find_season(file))))
         # move file to season folder if file not in season folder
         if not os.path.exists(os.path.join(season_path, file)):
+
+            new_name = os.path.join(
+                season_path, f'{find_movie_name_with_year(file)} S{find_season(file)}E{find_episode(file)}{title}.{find_file_type(file)}')
             if TEST_MODE:
-                print(f'{file} moved to {season_path}')
+                print(f'- MOVE {file} to {new_name}')
             else:
                 os.rename(file, os.path.join(season_path, file))
     else:
         # move file to movie folder if file not in movie folder
         if not os.path.exists(os.path.join(name_path, file)):
+            new_name = os.path.join(
+                name_path, f'{find_movie_name_with_year(file)}{title}.{find_file_type(file)}')
             if TEST_MODE:
-                print(f'{file} moved to {name_path}')
+                print(f'- MOVE {file} to {new_name}')
             else:
                 os.rename(file, os.path.join(name_path, file))
 
