@@ -325,7 +325,7 @@ def move_file_into_folder(file, category_str):
             if TEST_MODE:
                 print(f'- MOVE {file} to {new_name}')
             else:
-                os.rename(file, os.path.join(season_path, file))
+                os.rename(file, new_name)
     else:
         # move file to movie folder if file not in movie folder
         if not os.path.exists(os.path.join(name_path, file)):
@@ -334,7 +334,7 @@ def move_file_into_folder(file, category_str):
             if TEST_MODE:
                 print(f'- MOVE {file} to {new_name}')
             else:
-                os.rename(file, os.path.join(name_path, file))
+                os.rename(file, new_name)
 
 
 def main():
