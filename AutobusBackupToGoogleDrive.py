@@ -55,11 +55,18 @@ def set_file_name_todays_datetime(name):
     return name + '_' + datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S') + '.sql.gz'
 
 
-def run_rclone_script(file_name):
+def rclone_copy(file_name):
     """
-    Run rclone script
+    Run rclone copy script
     """
     return subprocess.call(['rclone', 'copy', file_name, 'google_remote:'])
+
+
+def rclone_delete_min_age(min_age):
+    """
+    Run rclone script to delete files older than min_age
+    """
+    return subprocess.call(['rclone', 'delete', '--min-age=' + str(min_age), 'google_remote:'])
 
 
 def check_linux_binary_exists(binary):
@@ -84,7 +91,8 @@ def main():
     if response:
         download_file(response, file_name)
         if check_linux_binary_exists('rclone'):
-            run_rclone_script(file_name)
+            rclone_copy(file_name)
+            rclone_delete_min_age("10d")
         else:
             print('rclone binary not found')
 
