@@ -3,6 +3,7 @@ import os
 import re
 import sys
 from colorama import Fore, Back, Style
+import argparse
 
 EmbyLibrary = './EmbyLibrary'
 ConvertDir = './convert'
@@ -22,8 +23,8 @@ CATEGORY = {
 CATEGORY_INPUT = 0
 TEST_MODE = True
 # https://psarips.top/
-listOfWords = '66CH|2160p|HDR|imax|10bit|BluRay|6CH|x265|HEVC-PSA|1080p|WEBRip|8CH|2CH|720p|web-dl|remastered|REAL|REPACK|BrRip'
-listOfWords = listOfWords.split('|')
+listOfWordsPSA = '66CH|2160p|HDR|imax|10bit|BluRay|6CH|x265|HEVC-PSA|1080p|WEBRip|8CH|2CH|720p|web-dl|remastered|REAL|REPACK|BrRip'
+listOfWordsPSA = listOfWordsPSA.split('|')
 
 
 def is_linux():
@@ -32,15 +33,6 @@ def is_linux():
     Returns True if running on Linux, False otherwise
     """
     return os.name == 'posix'
-
-
-if is_linux():
-    TEST_MODE = False
-else:
-    print(Fore.RED + 'This script is only for Linux')
-    print('Running in Test Mode')
-    print(Style.RESET_ALL)
-
 
 def set_folder_user_group(folder, user, group):
     """
@@ -230,7 +222,7 @@ def movie_path_in_list(file) -> str:
     """
     global CATEGORY_INPUT
     origin_file = os.path.join(ConvertDir, file)
-    file = remove_words(file, listOfWords)
+    file = remove_words(file, listOfWordsPSA)
     file = remove_dot(file)
 
     if find_season(file) != '-1':
@@ -265,8 +257,6 @@ def create_folder_movie(file, category_str):
     Creates a folder for the movie
     """
     global CATEGORY_INPUT
-    file = remove_words(file, listOfWords)
-    file = remove_dot(file)
 
     temp = 'Create folder for ' + Fore.GREEN + file + Style.RESET_ALL + ' in ?🧐\n'
 
@@ -330,9 +320,6 @@ def move_file_into_folder(origin_file, file, category_str, des_path):
         des_path = os.path.join(
             EmbyLibrary, CATEGORY[category_str][CATEGORY_INPUT], file[0], find_movie_name_with_year(file))
 
-    # alphabet_path = os.path.join(
-    #     EmbyLibrary, CATEGORY[category_str][CATEGORY_INPUT], file[0])
-    # name_path = os.path.join(alphabet_path, find_movie_name_with_year(file))
     title = find_title(file)
     if title != '':
         title = ' '+title
@@ -362,7 +349,36 @@ def move_file_into_folder(origin_file, file, category_str, des_path):
             print(f'- {origin_file} already in {des_path}')
 
 
+def less_indent_formatter(prog): return argparse.RawTextHelpFormatter(
+    prog, max_help_position=5)
+
+
+def interactive():
+    parser = argparse.ArgumentParser(
+        description=f'Easy app to move file to Emby library',
+        formatter_class=less_indent_formatter)
+    parser.add_argument('-m', '--mode', metavar='MODE', choices=['t', 'm'],  help='''
+t - Dry run without moving files
+m - Move files to Emby library
+    ''', required=True)
+    args = parser.parse_args()
+    return args
+
+
 def main():
+    global TEST_MODE
+    args = interactive()
+    print(Fore.RED + 'This script is only for Linux')
+    print(Style.RESET_ALL)
+    args = interactive()
+    if args.mode == 't':
+        TEST_MODE = True
+    else:
+        TEST_MODE = False
+    if TEST_MODE:
+        print(Fore.RED + 'Running in Test Mode')
+        print(Style.RESET_ALL)
+
     media_files = get_media_files_in_dir(ConvertDir)
     set_folder_user_group(ConvertDir, 'emby', 'dietpi')
     for file in media_files:
