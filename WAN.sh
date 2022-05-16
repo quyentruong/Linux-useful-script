@@ -114,7 +114,7 @@ echo -e "$GREEN_LINE"
 echo -e " $(grep '^PRETTY' /etc/os-release | cut -d "=" -f2 | cut -d '"' -f2) $GREEN_SEPARATOR $(date "+%H:%M - %a %m/%d/%Y")"
 echo -e "$GREEN_LINE"
 
-echo -e "$GREEN_BULLET 1st Test WAN IP $GREEN_SEPARATOR $(curl -sSfLm 3 https://freegeoip.app/csv/ 2>&1 | mawk -F, '($5){r=$5" "}{print $1" "r$3}')"
+echo -e "$GREEN_BULLET 1st Test WAN IP $GREEN_SEPARATOR $(curl -sSfLm 3 https://freegeoip.live/csv/ 2>&1 | mawk -F, '($5){r=$5" "}{print $1" "r$3}')"
 echo -e "$GREEN_BULLET 2nd Test WAN IP $GREEN_SEPARATOR $(print_servers "ip")"
 
 if [ ${dns_count} -eq "0" ];then
